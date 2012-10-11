@@ -81,12 +81,13 @@ def get_user_data():
     user = users.get_current_user()
     data = memcache.get('userdata-'+user.user_id())
     if not data:
-        data = UserData.all().filter('owner =', user).fetch(1)
-        if len(data):
-            data = data[0]
+        #data = UserData.all().filter('owner =', user).fetch(1)
+        key = userdata_key_name(user)
+        data = UserData.get_by_key_name(key)
+        if data:
             memcache.add('userdata-'+user.user_id(), data)
         else:
-            data = UserData(owner=user)
+            data = UserData(owner=user, key_name=key)
             data.put()
             memcache.delete('users')
     return data
@@ -98,6 +99,15 @@ def set_orac_username(username):
         data.put()
         memcache.delete('userdata-'+data.owner.user_id())
         memcache.delete('users')
+
+def problem_key_name(prob_id):
+    return str(prob_id)
+
+def solution_key_name(prob_id, owner):
+    return str(prob_id)+':'+owner.user_id()
+
+def userdata_key_name(owner):
+    return owner.user_id()
 
 class HomeHandler(webapp.RequestHandler):
     def get(self):
@@ -129,7 +139,7 @@ class UpdateHandler(webapp.RequestHandler):
         # make sure no-one is using this username already
         user = users.get_current_user()
 
-        result = list(UserData.all().filter('orac_username =', username).run())
+        result = UserData.all().filter('orac_username =', username).fetch(1)
         if len(result):
             if result[0].owner.user_id() != user.user_id():
                 self.response.set_status(303)
@@ -144,18 +154,18 @@ class UpdateHandler(webapp.RequestHandler):
 
         set_orac_username(username)
 
-        all_prob_ids = memcache.get('all_prob_ids')
-        if not all_prob_ids:
-            all_prob_ids = set()
-            for prob in Problem.all():
-                all_prob_ids.add(prob.prob_id)
-            memcache.add('all_prob_ids', all_prob_ids)
+#        all_prob_ids = memcache.get('all_prob_ids')
+#        if not all_prob_ids:
+#            all_prob_ids = set()
+#            for prob in Problem.all():
+#                all_prob_ids.add(prob.prob_id)
+#            memcache.add('all_prob_ids', all_prob_ids)
 
         stats = get_probs_stats(data)
 
-        all_sols = dict()
-        for sol in Solution.all().filter('owner =', user):
-            all_sols[sol.prob_id] = sol
+#        all_sols = dict()
+#        for sol in Solution.all().filter('owner =', user):
+#            all_sols[sol.prob_id] = sol
 
         problems_changed = False
 
@@ -163,32 +173,43 @@ class UpdateHandler(webapp.RequestHandler):
             name, result, solve_date = value
             # check whether this problem exists
             # create it if it doesn't
-            if prob_id not in all_prob_ids:
-                prob = Problem(prob_id=prob_id, name=name)
+#            if prob_id not in all_prob_ids:
+#                prob = Problem(prob_id=prob_id, name=name)
+#                prob.put()
+#                all_prob_ids.add(prob_id)
+#                problems_changed = True
+            key = problem_key_name(prob_id)
+            if not Problem.get_by_key_name(key):
+                prob = Problem(prob_id=prob_id, name=name, key_name=key)
                 prob.put()
-                all_prob_ids.add(prob_id)
-                problems_changed = True
 
             # check whether a solution already exists
-            sol_changed = False
-            if prob_id in all_sols:
-                if all_sols[prob_id].result != result:
-                    all_sols[prob_id].result = result
-                    all_sols[prob_id].solve_date = solve_date
-                    all_sols[prob_id].put()
-                    sol_changed = True
+            soln_changed = False
+#            if prob_id in all_sols:
+#                if all_sols[prob_id].result != result:
+#                    all_sols[prob_id].result = result
+#                    all_sols[prob_id].solve_date = solve_date
+#                    all_sols[prob_id].put()
+#                    soln_changed = True
+            key = solution_key_name(prob_id, user)
+            soln = Solution.get_by_key_name(key)
+            if soln:
+                if soln.result != result:
+                    soln.result = result
+                    soln.solve_date = solve_date
+                    soln.put()
+                    soln_changed = True
             else:
-                q = Solution(prob_id=prob_id, owner=user, result=result, solve_date=solve_date)
+                q = Solution(prob_id=prob_id, owner=user, result=result, solve_date=solve_date, key_name=key)
                 q.put()
-                sol_changed = True
+                soln_changed = True
 
-            if sol_changed:
+            if soln_changed:
                 memcache.delete('solutions-%d' % prob_id)
 
         # remove problems from memcache
         if problems_changed:
             memcache.delete('problems')
-            memcache.delete('all_prob_ids')
 
         self.response.set_status(303)
         self.response.headers.add_header('Location', '?status=success')
@@ -231,17 +252,17 @@ class ProblemHandler(webapp.RequestHandler):
 
         if prob_id.isdigit():
             key = 'problem-' + prob_id
-            result = memcache.get(key)
-            if not result:
-                problem = Problem.all()
-                problem.filter('prob_id =', int(prob_id))
-                result = problem.fetch(1)
-                memcache.add(key, result)
+            problem = memcache.get(key)
+            if not problem:
+                #problem = Problem.all()
+                #problem.filter('prob_id =', int(prob_id))
+                #problem = problem.fetch(1)
+                problem = Problem.get_by_key_name(problem_key_name(prob_id))
+                memcache.add(key, problem)
         else:
-            result = []
+            problem = None
 
-        if len(result):
-            problem = result[0]
+        if problem:
             template_values['problem'] = problem
 
             # get solutions
@@ -312,7 +333,7 @@ def main():
     application = webapp.WSGIApplication([
         (HOME.url, HomeHandler),
         (UPDATE.url, UpdateHandler),
-        (COMPARE.url, CompareHandler),
+        #(COMPARE.url, CompareHandler),
         (PROBLEMS.url, ProblemsHandler),
         (PROBLEM.url+r'/.*', ProblemHandler),
         ], debug=True)

@@ -67,7 +67,7 @@ def fetch_stats(username, password):
     if result:
         # use the cookie, luke
         conn = httplib.HTTPConnection('orac.amt.edu.au')
-        conn.request('GET', '/cgi-bin/train/hub.pl?expand=all', None, {'Cookie': cookie})
+        conn.request('GET', '/cgi-bin/train/hub.pl?expand=all&setshowdone=1', None, {'Cookie': cookie})
         res = conn.getresponse()
         if res.status == 200:
             result = res.read()

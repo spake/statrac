@@ -2,7 +2,7 @@
 <html>
     <head>
         <title>statrac</title>
-        <!-- Bootstrap -->
+        <link href="/img/favicon.ico" rel="icon">
         <link href="/css/bootstrap.min.css" rel="stylesheet">
         <style>
             @import url(http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
@@ -29,6 +29,8 @@
                 width: 222px;
             }
         </style>
+        <script src="/js/main.js"></script>
+        <script src="http://code.jquery.com/jquery-latest.js"></script>
     </head>
     <body>
         <div class="navbar navbar-inverse navbar-fixed-top">
@@ -60,17 +62,23 @@
                             <a class="btn" href="{{ login_url }}">Sign in</a>
                         </div>
                         {% endif %}
-                    </div><!--/.nav-collapse -->
+                    </div>
                 </div>
             </div>
         </div>
 
         <div class="container">
 
-        {% include page.filename %}
+            {% include page.filename %}
+
+            <hr>
+            <footer class="footer">
+            <p>Designed and built by <a href="http://github.com/spake">George Caley</a>, with portions of code by <a href="http://github.com/junkbot">Joshua Lau</a>.<br/>
+            Please direct any questions, comments, suggestions and rage to spake on <a href="http://webchat.freenode.net/?channels=aioc">#aioc</a>.</p>
+            </footer>
 
         </div>
-        <script src="http://code.jquery.com/jquery-latest.js"></script>
+
         <script src="/js/bootstrap.min.js"></script>
     </body>
 </html>

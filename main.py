@@ -39,7 +39,7 @@ PROBLEMS = Page('Problems', '/problems', 'problems.html')
 COMPARE = Page('Compare', '/compare', 'compare.html')
 UPDATE = Page('Update', '/update', 'update.html')
 
-PROBLEM = Page('', '', 'problem.html')
+PROBLEM = Page('', '/problem/[0-9]+', 'problem.html')
 
 PAGES = [HOME, PROBLEMS, COMPARE, UPDATE]
 
@@ -77,8 +77,9 @@ class UserData(db.Model):
     owner = db.UserProperty(required=True)
     orac_username = db.StringProperty()
 
-def get_user_data():
-    user = users.get_current_user()
+def get_user_data(user=None):
+    if not user:
+        user = users.get_current_user()
     data = memcache.get('userdata-'+user.user_id())
     if not data:
         #data = UserData.all().filter('owner =', user).fetch(1)
@@ -109,6 +110,36 @@ def solution_key_name(prob_id, owner):
 def userdata_key_name(owner):
     return owner.user_id()
 
+def get_problem(prob_id):
+    key = 'problem-' + str(prob_id)
+    problem = memcache.get(key)
+    if not problem:
+        problem = Problem.get_by_key_name(problem_key_name(prob_id))
+        if problem:
+            memcache.add(key, problem)
+    return problem
+
+def get_solutions_for_user(user):
+    key = 'solutions-for-user-' + user.user_id()
+    data = memcache.get(key)
+    if not data:
+        data = Solution.all().filter('owner =', user).run()
+        data = list(data)
+        memcache.add(key, data)
+    return data
+
+def get_problems_for_user(user):
+    key = 'problems-for-user-' + user.user_id()
+    probs = memcache.get(key)
+    if not probs:
+        solns = get_solutions_for_user(user)
+        probs = list()
+        for soln in solns:
+            probs.append(get_problem(soln.prob_id))
+        probs = sorted(probs, key=lambda a: a.name)
+        memcache.add(key, probs)
+    return probs
+
 class HomeHandler(webapp.RequestHandler):
     def get(self):
         template_values = standard_template_values()
@@ -121,6 +152,7 @@ class HomeHandler(webapp.RequestHandler):
                 "If you're feeling particularly generous today, donate spake some more snide remarks in #aioc."
                 ]
         template_values['snide_remark'] = random.choice(snide_remarks)
+        template_values['error'] = self.request.get('error')
         self.response.out.write(template.render(HTML_PATH, template_values))
 
 class UpdateHandler(webapp.RequestHandler):
@@ -168,6 +200,9 @@ class UpdateHandler(webapp.RequestHandler):
 #            all_sols[sol.prob_id] = sol
 
         problems_changed = False
+        memcache.delete('problems')
+        memcache.delete('solutions-for-user-' + user.user_id())
+        memcache.delete('problems-for-user-' + user.user_id())
 
         for prob_id, value in stats.items():
             name, result, solve_date = value
@@ -208,23 +243,29 @@ class UpdateHandler(webapp.RequestHandler):
                 memcache.delete('solutions-%d' % prob_id)
 
         # remove problems from memcache
-        if problems_changed:
-            memcache.delete('problems')
+        #if problems_changed:
 
         self.response.set_status(303)
         self.response.headers.add_header('Location', '?status=success')
 
 class ProblemsHandler(webapp.RequestHandler):
     def get(self):
+        data = get_user_data()
+        if not data.orac_username:
+            self.response.set_status(302)
+            self.response.headers.add_header('Location', '/?error=noproblems')
+            return
+
         template_values = standard_template_values()
         template_values['page'] = PROBLEMS
 
-        result = memcache.get('problems')
-        if not result:
-            problems = Problem.all()
-            problems.order('name')
-            result = list(problems.run())
-            memcache.add('problems', result)
+#        result = memcache.get('problems')
+#        if not result:
+#            problems = Problem.all()
+#            problems.order('name')
+#            result = list(problems.run())
+#            memcache.add('problems', result)
+        result = get_problems_for_user(users.get_current_user())
 
         total = len(result)
         third = total/3
@@ -251,14 +292,7 @@ class ProblemHandler(webapp.RequestHandler):
         template_values['debug'] = prob_id
 
         if prob_id.isdigit():
-            key = 'problem-' + prob_id
-            problem = memcache.get(key)
-            if not problem:
-                #problem = Problem.all()
-                #problem.filter('prob_id =', int(prob_id))
-                #problem = problem.fetch(1)
-                problem = Problem.get_by_key_name(problem_key_name(prob_id))
-                memcache.add(key, problem)
+            problem = get_problem(prob_id)
         else:
             problem = None
 
@@ -300,14 +334,20 @@ class ProblemHandler(webapp.RequestHandler):
         self.response.out.write(template.render(HTML_PATH, template_values))
 
 class CompareHandler(webapp.RequestHandler):
-    def get(self):
+    def get(self, extra_values=None):
+        data = get_user_data()
+        if not data.orac_username:
+            self.response.set_status(302)
+            self.response.headers.add_header('Location', '/?error=noproblems')
+            return
+
         template_values = standard_template_values()
         template_values['page'] = COMPARE
 
         # fetch all users
         users = memcache.get('users')
         if not users:
-            users = UserData.all().filter('orac_username !=', None)
+            users = UserData.all().filter('orac_username !=', None).order('orac_username')
             users = list(users.run())
             memcache.add('users', users)
 
@@ -318,6 +358,9 @@ class CompareHandler(webapp.RequestHandler):
                 real_users.append(user)
 
         template_values['users'] = real_users
+        if extra_values:
+            for key in extra_values:
+                template_values[key] = extra_values[key]
 
         self.response.out.write(template.render(HTML_PATH, template_values))
 
@@ -325,7 +368,64 @@ class CompareHandler(webapp.RequestHandler):
         them_key = self.request.get('them')
         data = list(UserData.all().filter('orac_username =', them_key).run())
         if len(data):
-            self.response.out.write('woo<br>'+data[0].owner.user_id())
+            # get a list of all of their solutions
+            our_data = get_user_data()
+            their_data = data[0]
+
+            #our_solns = Solution.all().filter('owner =', our_data.owner).run()
+            #their_solns = Solution.all().filter('owner =', their_data.owner).run()
+            our_solns = get_solutions_for_user(our_data.owner)
+            their_solns = get_solutions_for_user(their_data.owner)
+
+            our_solns_dict = dict()
+            their_solns_dict = dict()
+
+            for soln in their_solns:
+                their_solns_dict[soln.prob_id] = soln
+
+            us_all_count, us_all_total = 0, 0
+            us_common_count = 0
+            them_all_count, them_all_total = 0, 0
+            them_common_count = 0
+            common_total = 0
+
+            delta = dict()
+            for soln in our_solns:
+                if soln.prob_id in their_solns_dict:
+                    our_result = soln.result
+                    their_result = their_solns_dict[soln.prob_id].result
+                    if our_result != their_result:
+                        our_date = soln.solve_date
+                        their_date = their_solns_dict[soln.prob_id].solve_date
+
+                        problem = get_problem(soln.prob_id)
+
+                        if not our_date and our_result == 0:
+                            our_string = 'Not attempted'
+                        else:
+                            our_string = '%d%%' % our_result
+
+                        if not their_date and their_result == 0:
+                            their_string = 'Not attempted'
+                        else:
+                            their_string = '%d%%' % their_result
+
+                        delta[soln.prob_id] = (problem, our_string, their_string)
+
+                    if our_result == 100:
+                        us_common_count += 1
+                    if their_result == 100:
+                        them_common_count += 1
+                    common_total += 1
+
+            table = sorted(delta.values(), key=lambda a:a[0].name)
+            extra_values = dict()
+            extra_values['table'] = table
+            extra_values['us'] = our_data.orac_username
+            extra_values['them'] = their_data.orac_username
+            extra_values['us_common'] = '%d/%d (%.2f%%)' % (us_common_count, common_total, (us_common_count*100)/float(common_total))
+            extra_values['them_common'] = '%d/%d (%.2f%%)' % (them_common_count, common_total, (them_common_count*100)/float(common_total))
+            self.get(extra_values)
         else:
             self.response.out.write(them_key)
 
@@ -333,9 +433,9 @@ def main():
     application = webapp.WSGIApplication([
         (HOME.url, HomeHandler),
         (UPDATE.url, UpdateHandler),
-        #(COMPARE.url, CompareHandler),
+        (COMPARE.url, CompareHandler),
         (PROBLEMS.url, ProblemsHandler),
-        (PROBLEM.url+r'/.*', ProblemHandler),
+        (PROBLEM.url, ProblemHandler),
         ], debug=True)
     util.run_wsgi_app(application)
 

@@ -1,9 +1,68 @@
 <h1 class="page-header">Compare statistics</h1>
-<form method="POST">
+<form class="form-inline" method="POST">
     <select name="them">
         {% for user in users %}
         <option value="{{ user.orac_username }}">{{ user.orac_username }}</option>
         {% endfor %}
-    </select><br />
+    </select>
     <input class="btn" type="submit" value="Compare" />
 </form>
+{% if table %}
+<table class="table table-striped table-bordered" id="statsTable">
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Common Problems Completed</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ us }}</td>
+            <td>{{ us_common }}</td>
+        </tr>
+        <tr>
+            <td>{{ them }}</td>
+            <td>{{ them_common }}</td>
+        </tr>
+    </tbody>
+</table>
+<table class="table table-striped table-bordered" id="scoreTable">
+    <thead>
+        <tr>
+            <th>Problem</th>
+            <th>{{ us }}</th>
+            <th>{{ them }}</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for val1, val2, val3 in table %}
+        <tr>
+            <td><a href="/problem/{{ val1.prob_id }}">{{ val1.name }}</a></td>
+            <td class="score">{{ val2 }}</td>
+            <td class="score">{{ val3 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<script type="text/javascript">
+    $(document).ready(function(){
+        cells = document.getElementsByClassName("score");
+        for (i in cells) {
+            cell = cells[i];
+            contents = cell.textContent;
+            score = parseInt(contents);
+            if (isNaN(score)) {
+                score = 0;
+            }
+            h = 0.3*Math.pow((score/100),2);
+            s = 0.8;
+            l = 0.6;
+            rgb = hslToRgb(h, s, l);
+            colour = '#'+decimalToHex(rgb[0])+decimalToHex(rgb[1])+decimalToHex(rgb[2]);
+            if (cell.style != undefined) {
+                cell.style.backgroundColor = colour;
+            }
+        }
+    });
+</script>
+{% endif %}

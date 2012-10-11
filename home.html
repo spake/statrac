@@ -2,3 +2,8 @@
     <h1 class="page-header">statrac</h1>
     <p>{{ snide_remark }}</p>
 </div>
+{% if error == 'noproblems' %}
+<div class="alert alert-error">
+    You'll need to <a href="/update">add your own problems from orac</a> before you can access that.
+</div>
+{% endif %}

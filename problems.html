@@ -1,0 +1,17 @@
+<h1 class="page-header">Problems</h1>
+{% if no_problems %}
+<p>Doesn't look like there's any problems in here. Perhaps you should update your statistics?</p>
+{% endif %}
+<div class="row">
+    {% autoescape off %}
+    {% for probs in problems %}
+    <div class="span4">
+        <ul class="nav nav-tabs nav-stacked">
+            {% for prob in probs %}
+            <li><a href="/problem/{{ prob.prob_id }}">{{ prob.name }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endfor %}
+    {% endautoescape %}
+</div>

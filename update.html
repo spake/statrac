@@ -1,0 +1,26 @@
+<h1 class="page-header">Update statistics</h1>
+{% if status == 'success' %}
+<div class="alert alert-success">
+    Woohoo, your statistics have been updated successfully!
+</div>
+{% endif %}
+{% if status == 'failure' %}
+<div class="alert alert-error">
+    Couldn't fetch your statistics from orac. Check that your username and password are correct and try again.
+</div>
+{% endif %}
+{% if status == 'badusername' %}
+<div class="alert alert-error">
+    Another user has already uploaded their statistics under this username.
+</div>
+{% endif %}
+<p>At the heart of any good statistics site lies the statistics. To make it easier for you (since you don't have to save and upload a page from orac) and me (since I don't have to worry about people uploading incorrect/damaged pages), just punch in your orac username and password and your statistics will be fetched and updated automatically.</p>
+<p>Please note that your orac password is <b>not</b> being stored, and is only used to request your orac cookie, and then use that cookie to retrieve a list of your problems from the hub; both the password and cookie are discarded immediately after the request is made. Your orac username will be stored in order to identify your statistics to others.</p>
+
+<div class="login-form">
+    <form method="POST">
+        <input type="text" name="username" placeholder="orac username" value="{% if username %}{{ username }}{% endif %}" /><br />
+        <input type="password" name="password" placeholder="orac password" /><br />
+        <input class="btn primary" type="submit" value="Update" />
+    </form>
+</div>

@@ -1,0 +1,9 @@
+<h1 class="page-header">Compare statistics</h1>
+<form method="POST">
+    <select name="them">
+        {% for user in users %}
+        <option value="{{ user.orac_username }}">{{ user.orac_username }}</option>
+        {% endfor %}
+    </select><br />
+    <input class="btn" type="submit" value="Compare" />
+</form>

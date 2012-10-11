@@ -1,0 +1,7 @@
+{% if uploaded %}
+Problems added to database.
+{% endif %}
+<form enctype="multipart/form-data" method="POST">
+    Your File: <input type="file" name="data" /><br />
+    <input class="btn" type="submit" name="submit" value="Upload" />
+</form>

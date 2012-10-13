@@ -7,3 +7,12 @@
     You'll need to <a href="/update">add your own problems from orac</a> before you can access that.
 </div>
 {% endif %}
+
+<h2>Updates</h2>
+{% if updates %}
+{% for timestamp, stuff in updates %}
+<div class="well well-small"><b>{{ timestamp }}</b><br/>{{ stuff }}</div>
+{% endfor %}
+{% else %}
+No updates yet! They'll appear once someone makes progress on a problem and updates their statistics.
+{% endif %}

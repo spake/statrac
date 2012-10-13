@@ -20,7 +20,9 @@ from google.appengine.ext import webapp
 from google.appengine.ext import db
 from google.appengine.ext.webapp import template
 from google.appengine.ext.webapp import util
+import datetime
 import os
+import pickle
 import random
 import re
 
@@ -76,6 +78,11 @@ class Solution(db.Model):
 class UserData(db.Model):
     owner = db.UserProperty(required=True)
     orac_username = db.StringProperty()
+
+class StatusUpdate(db.Model):
+    owner = db.UserProperty(required=True)
+    delta = db.ByteStringProperty(required=True)
+    timestamp = db.DateTimeProperty(auto_now_add=True)
 
 def get_user_data(user=None):
     if not user:
@@ -140,6 +147,23 @@ def get_problems_for_user(user):
         memcache.add(key, probs)
     return probs
 
+def login_check(self):
+    if not users.get_current_user():
+        self.response.set_status(302)
+        self.response.headers.add_header('Location', users.create_login_url(self.request.url))
+        return False
+    return True
+
+def has_problems_check(self):
+    if not login_check(self):
+        return False
+    data = get_user_data()
+    if not data.orac_username:
+        self.response.set_status(302)
+        self.response.headers.add_header('Location', '/?error=noproblems')
+        return False
+    return True
+
 class HomeHandler(webapp.RequestHandler):
     def get(self):
         template_values = standard_template_values()
@@ -153,10 +177,53 @@ class HomeHandler(webapp.RequestHandler):
                 ]
         template_values['snide_remark'] = random.choice(snide_remarks)
         template_values['error'] = self.request.get('error')
+
+        # get status updates
+        update_objects = memcache.get('updates')
+        if not update_objects:
+            update_objects = list(StatusUpdate.all().order('-timestamp').run(limit=5))
+            memcache.add('updates', update_objects)
+        # decode deltas into proper strings
+        updates = list()
+        for update_object in update_objects:
+            delta = pickle.loads(update_object.delta)
+            last, _, cut = delta[-1]
+            if last is None:
+                delta = delta[:-1]
+            else:
+                cut = 0
+
+            username = get_user_data(update_object.owner).orac_username
+
+            solved = list()
+            boost = list()
+            for name, old, new in delta:
+                if new == 100:
+                    solved.append(name)
+                else:
+                    boost.append('%d%% in %s' % (new, name))
+
+            achievements = list()
+            if len(solved):
+                achievements.append('solved ' + (solved[0] if len(solved) == 1 else ', '.join(solved[:-1]) + ' and ' + solved[-1]))
+            if len(boost):
+                achievements.append('achieved a new personal best of ' + (boost[0] if len(boost) == 1 else ', '.join(boost[:-1]) + ' and ' + boost[-1]))
+
+            string = username + ' '
+            string += achievements[0] if len(achievements) == 1 else achievements[0] + ' and ' + achievements[1]
+            string += '.'
+            dt = datetime.datetime.strftime(update_object.timestamp + datetime.timedelta(hours=11), "%I:%M%p %A %d %B %Y")
+            updates.append((dt, string))
+
+        template_values['updates'] = updates if len(updates) else None
+
         self.response.out.write(template.render(HTML_PATH, template_values))
 
 class UpdateHandler(webapp.RequestHandler):
     def get(self):
+        if not login_check(self):
+            return
+
         template_values = standard_template_values()
         template_values['page'] = UPDATE
         template_values['status'] = self.request.get('status')
@@ -184,35 +251,21 @@ class UpdateHandler(webapp.RequestHandler):
             self.response.headers.add_header('Location', '?status=failure')
             return
 
+        uploaded_before = get_user_data().orac_username is not None
         set_orac_username(username)
-
-#        all_prob_ids = memcache.get('all_prob_ids')
-#        if not all_prob_ids:
-#            all_prob_ids = set()
-#            for prob in Problem.all():
-#                all_prob_ids.add(prob.prob_id)
-#            memcache.add('all_prob_ids', all_prob_ids)
 
         stats = get_probs_stats(data)
 
-#        all_sols = dict()
-#        for sol in Solution.all().filter('owner =', user):
-#            all_sols[sol.prob_id] = sol
-
         problems_changed = False
-        memcache.delete('problems')
         memcache.delete('solutions-for-user-' + user.user_id())
         memcache.delete('problems-for-user-' + user.user_id())
+
+        delta = list()
 
         for prob_id, value in stats.items():
             name, result, solve_date = value
             # check whether this problem exists
             # create it if it doesn't
-#            if prob_id not in all_prob_ids:
-#                prob = Problem(prob_id=prob_id, name=name)
-#                prob.put()
-#                all_prob_ids.add(prob_id)
-#                problems_changed = True
             key = problem_key_name(prob_id)
             if not Problem.get_by_key_name(key):
                 prob = Problem(prob_id=prob_id, name=name, key_name=key)
@@ -220,16 +273,12 @@ class UpdateHandler(webapp.RequestHandler):
 
             # check whether a solution already exists
             soln_changed = False
-#            if prob_id in all_sols:
-#                if all_sols[prob_id].result != result:
-#                    all_sols[prob_id].result = result
-#                    all_sols[prob_id].solve_date = solve_date
-#                    all_sols[prob_id].put()
-#                    soln_changed = True
             key = solution_key_name(prob_id, user)
             soln = Solution.get_by_key_name(key)
             if soln:
                 if soln.result != result:
+                    old_result = -1 if not soln.solve_date else soln.result
+                    delta.append((name, old_result, result))
                     soln.result = result
                     soln.solve_date = solve_date
                     soln.put()
@@ -242,18 +291,29 @@ class UpdateHandler(webapp.RequestHandler):
             if soln_changed:
                 memcache.delete('solutions-%d' % prob_id)
 
-        # remove problems from memcache
-        #if problems_changed:
+        if len(delta) > 0 and uploaded_before:
+            # sort the delta by the new score
+            # it contains tuples in the format (name, old_result, new_result)
+            delta = sorted(delta, key=lambda a:a[2], reverse=True)
+            # limit the delta to 5 problems
+            total = len(delta)
+            limit = 5
+            cut = total - limit
+            if cut > 0:
+                delta = delta[:5]
+                delta.append((None, 0, cut))
+
+            delta_bytes = pickle.dumps(delta)
+            update = StatusUpdate(delta=delta_bytes, owner=user)
+            update.put()
+            memcache.delete('updates')
 
         self.response.set_status(303)
         self.response.headers.add_header('Location', '?status=success')
 
 class ProblemsHandler(webapp.RequestHandler):
     def get(self):
-        data = get_user_data()
-        if not data.orac_username:
-            self.response.set_status(302)
-            self.response.headers.add_header('Location', '/?error=noproblems')
+        if not has_problems_check(self):
             return
 
         template_values = standard_template_values()
@@ -285,6 +345,9 @@ class ProblemsHandler(webapp.RequestHandler):
 
 class ProblemHandler(webapp.RequestHandler):
     def get(self):
+        if not has_problems_check(self):
+            return
+
         template_values = standard_template_values()
         template_values['page'] = PROBLEM
 
@@ -335,10 +398,7 @@ class ProblemHandler(webapp.RequestHandler):
 
 class CompareHandler(webapp.RequestHandler):
     def get(self, extra_values=None):
-        data = get_user_data()
-        if not data.orac_username:
-            self.response.set_status(302)
-            self.response.headers.add_header('Location', '/?error=noproblems')
+        if not has_problems_check(self):
             return
 
         template_values = standard_template_values()

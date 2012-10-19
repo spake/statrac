@@ -1,5 +1,5 @@
 <h1 class="page-header">Compare statistics</h1>
-<form class="form-inline" method="POST">
+<form class="form-inline" method="POST" action="/compare">
     <select name="them">
         {% for user in users %}
         <option value="{{ user.orac_username }}">{{ user.orac_username }}</option>

@@ -207,7 +207,6 @@ class HomeHandler(webapp.RequestHandler):
             dt = datetime.datetime.strftime(update_object.timestamp + datetime.timedelta(hours=11), "%I:%M%p %A %d %B %Y")
             updates.append((dt, string))
 
-        updates = [('Date', 'Shit')]*5
         template_values['updates'] = updates if len(updates) else None
 
         self.response.out.write(template.render(HTML_PATH, template_values))
@@ -436,11 +435,14 @@ class CompareHandler(webapp.RequestHandler):
             for soln in their_solns:
                 their_solns_dict[soln.prob_id] = soln
 
-            us_all_count, us_all_total = 0, 0
+            us_all_count = 0
             us_common_count = 0
-            them_all_count, them_all_total = 0, 0
+            them_all_count = 0
             them_common_count = 0
             common_total = 0
+
+            us_all_total = len(our_solns)
+            them_all_total = len(their_solns)
 
             delta = dict()
             for soln in our_solns:
@@ -471,6 +473,13 @@ class CompareHandler(webapp.RequestHandler):
                         them_common_count += 1
                     common_total += 1
 
+                if soln.result == 100:
+                    us_all_count += 1
+
+            for soln in their_solns:
+                if soln.result == 100:
+                    them_all_count += 1
+
             table = sorted(delta.values(), key=lambda a:a[0].name)
             extra_values = dict()
             extra_values['table'] = table
@@ -478,6 +487,8 @@ class CompareHandler(webapp.RequestHandler):
             extra_values['them'] = their_data.orac_username
             extra_values['us_common'] = '%d/%d (%.2f%%)' % (us_common_count, common_total, (us_common_count*100)/float(common_total))
             extra_values['them_common'] = '%d/%d (%.2f%%)' % (them_common_count, common_total, (them_common_count*100)/float(common_total))
+            extra_values['us_total'] = '%d/%d (%.2f%%)' % (us_all_count, us_all_total, (us_all_count*100)/float(us_all_total))
+            extra_values['them_total'] = '%d/%d (%.2f%%)' % (them_all_count, them_all_total, (them_all_count*100)/float(them_all_total))
             self.get(extra_values)
         else:
             self.response.out.write(them_key)

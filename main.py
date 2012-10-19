@@ -168,14 +168,6 @@ class HomeHandler(webapp.RequestHandler):
     def get(self):
         template_values = standard_template_values()
         template_values['page'] = HOME
-        snide_remarks = [
-                'Welcome to statrac, providing you with orac statistics since before you were born.',
-                'If you can read this, then you must have typed the URL in correctly. Nice work!',
-                "Scientists haven't yet figured out why this site was made, but they love it all the same.",
-                "It's like Hall of Fame, but streamlines the process of laughing at your friends for completing so few problems.",
-                "If you're feeling particularly generous today, donate spake some more snide remarks in #aioc."
-                ]
-        template_values['snide_remark'] = random.choice(snide_remarks)
         template_values['error'] = self.request.get('error')
 
         # get status updates
@@ -215,6 +207,7 @@ class HomeHandler(webapp.RequestHandler):
             dt = datetime.datetime.strftime(update_object.timestamp + datetime.timedelta(hours=11), "%I:%M%p %A %d %B %Y")
             updates.append((dt, string))
 
+        updates = [('Date', 'Shit')]*5
         template_values['updates'] = updates if len(updates) else None
 
         self.response.out.write(template.render(HTML_PATH, template_values))

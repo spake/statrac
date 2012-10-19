@@ -1,18 +1,24 @@
-<div class="hero-unit">
-    <h1 class="page-header">statrac</h1>
-    <p>{{ snide_remark }}</p>
-</div>
 {% if error == 'noproblems' %}
 <div class="alert alert-error">
     You'll need to <a href="/update">add your own problems from orac</a> before you can access that.
 </div>
 {% endif %}
+<div class="row">
+    <div class="span6" style="height:100%;">
+        <div class="hero-unit">
+            <h1 class="page-header">statrac</h1>
+            <p>Welcome to statrac, a handy site that aggregates statistics from the <a href="http://orac.amt.edu.au/">Australian Informatics Olympiad training site</a>. Signing in and updating your statistics from orac will grant you access to a list of problems (accompanied by fancy graphs) and the ability to compare your statistics with other users.</p>
+        </div>
+    </div>
+    <div class="span6">
 
-<h2>Updates</h2>
-{% if updates %}
-{% for timestamp, stuff in updates %}
-<div class="well well-small"><b>{{ timestamp }}</b><br/>{{ stuff }}</div>
-{% endfor %}
-{% else %}
-No updates yet! They'll appear once someone makes progress on a problem and updates their statistics.
-{% endif %}
+        <h2 class="page-header">Updates</h2>
+        {% if updates %}
+        {% for timestamp, stuff in updates %}
+        <div class="well well-small"><b>{{ timestamp }}</b><br/>{{ stuff }}</div>
+        {% endfor %}
+        {% else %}
+        No updates yet! They'll appear once someone makes progress on a problem and updates their statistics.
+        {% endif %}
+    </div>
+</div>

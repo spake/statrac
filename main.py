@@ -224,6 +224,9 @@ class UpdateHandler(webapp.RequestHandler):
         self.response.out.write(template.render(HTML_PATH, template_values))
 
     def post(self):
+        if not login_check(self):
+            return
+
         username = self.request.get('username')
         password = self.request.get('password')
 
@@ -373,6 +376,7 @@ class ProblemHandler(webapp.RequestHandler):
 
             solved, unsolved = 0, 0
             scores = dict()
+            nice_solns = list()
             for soln in result:
                 if soln.result == 100:
                     solved += 1
@@ -381,17 +385,23 @@ class ProblemHandler(webapp.RequestHandler):
                 if soln.result not in scores:
                     scores[soln.result] = 0
                 scores[soln.result] += 1
+                nice_solns.append((get_user_data(soln.owner).orac_username, soln.result))
             template_values['solved'] = solved
             template_values['unsolved'] = unsolved
             template_values['scores'] = [(result, scores[result]) for result in sorted(scores, reverse=True)]
+            template_values['solns'] = sorted(nice_solns, cmp=lambda a,b: cmp(b[1],a[1]) if a[1]!=b[1] else cmp(a[0],b[0]))
             template_values['access'] = access
+            template_values['me'] = get_user_data().orac_username
 
         self.response.out.write(template.render(HTML_PATH, template_values))
 
 class CompareHandler(webapp.RequestHandler):
-    def get(self, extra_values=None):
+    def get(self, extra_values=None, request_handled=False):
         if not has_problems_check(self):
             return
+
+        if self.request.get('them') and not request_handled:
+            return self.post()
 
         template_values = standard_template_values()
         template_values['page'] = COMPARE
@@ -417,6 +427,9 @@ class CompareHandler(webapp.RequestHandler):
         self.response.out.write(template.render(HTML_PATH, template_values))
 
     def post(self):
+        if not has_problems_check(self):
+            return
+
         them_key = self.request.get('them')
         data = list(UserData.all().filter('orac_username =', them_key).run())
         if len(data):
@@ -489,7 +502,7 @@ class CompareHandler(webapp.RequestHandler):
             extra_values['them_common'] = '%d/%d (%.2f%%)' % (them_common_count, common_total, (them_common_count*100)/float(common_total))
             extra_values['us_total'] = '%d/%d (%.2f%%)' % (us_all_count, us_all_total, (us_all_count*100)/float(us_all_total))
             extra_values['them_total'] = '%d/%d (%.2f%%)' % (them_all_count, them_all_total, (them_all_count*100)/float(them_all_total))
-            self.get(extra_values)
+            self.get(extra_values, True)
         else:
             self.response.out.write(them_key)
 

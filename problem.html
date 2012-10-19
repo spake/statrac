@@ -1,6 +1,8 @@
 {% if problem %}
 {% if access %}
+{% autoescape off %}
 <h1 class="page-header">{{ problem.name }}</h1>
+{% endautoescape %}
 <div class="row">
     <div class="span8">
         <div id="chart"></div>
@@ -19,7 +21,7 @@
             <tbody>
                 {% for user, score in solns %}
                 <tr>
-                    {% if user == me %}<td style="font-weight: bold;">{{ user }}</td>{% else %}<td><a href="/compare?them={{ user }}">{{ user }}</a></td>{% endif %}
+                    {% if user == username %}<td style="font-weight: bold;">{{ user }}</td>{% else %}<td><a href="/compare?them={{ user }}">{{ user }}</a></td>{% endif %}
                     <td class="score">{{ score }}%</td>
                 </tr>
                 {% endfor %}

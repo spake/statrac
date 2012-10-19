@@ -1,0 +1,47 @@
+@import url(http://fonts.googleapis.com/css?family=Yanone+Kaffeesatz);
+
+body {
+    padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
+}
+
+.brand, h1, h2, h3 {
+    font-family: 'Yanone Kaffeesatz', sans-serif;
+}
+
+.login-form {
+    background-color: #eaeaea;
+    padding: 20px;
+    padding-bottom: 1px;
+    margin: 0;
+    -webkit-border-radius: 10px 10px 10px 10px;
+    -moz-border-radius: 10px 10px 10px 10px;
+    border-radius: 10px 10px 10px 10px;
+    -webkit-box-shadow: 0 1px 2px rgba(0,0,0,.15);
+    -moz-box-shadow: 0 1px 2px rgba(0,0,0,.15);
+    box-shadow: 0 1px 2px rgba(0,0,0,.15);
+    width: 222px;
+}
+
+.roundlet {
+    margin: 0;
+    padding: 14px;
+    background-color: #eee;
+    border-width: 0 0 1px 0;
+    border-style: solid;
+    border-color: #ddd;
+}
+
+.roundlet.first {
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+}
+
+.roundlet.last {
+    border-width: 0px;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+.hero-unit.main {
+    background-color: #fff;
+}

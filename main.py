@@ -58,6 +58,7 @@ def standard_template_values():
             nickname = data.owner.email()
 
         template_values['nickname'] = nickname
+        template_values['username'] = data.orac_username
         template_values['logout_url'] = users.create_logout_url('/')
     else:
         template_values['login_url'] = users.create_login_url('/')
@@ -207,7 +208,7 @@ class HomeHandler(webapp.RequestHandler):
             dt = datetime.datetime.strftime(update_object.timestamp + datetime.timedelta(hours=11), "%I:%M%p %A %d %B %Y")
             updates.append((dt, string))
 
-        template_values['updates'] = updates if len(updates) else None
+        template_values['updates'] = [updates[i]+(i==0,i==len(updates)-1) for i in xrange(len(updates))] if len(updates) else None
 
         self.response.out.write(template.render(HTML_PATH, template_values))
 
@@ -220,7 +221,6 @@ class UpdateHandler(webapp.RequestHandler):
         template_values['page'] = UPDATE
         template_values['status'] = self.request.get('status')
         data = get_user_data()
-        template_values['username'] = data.orac_username
         self.response.out.write(template.render(HTML_PATH, template_values))
 
     def post(self):
@@ -391,7 +391,6 @@ class ProblemHandler(webapp.RequestHandler):
             template_values['scores'] = [(result, scores[result]) for result in sorted(scores, reverse=True)]
             template_values['solns'] = sorted(nice_solns, cmp=lambda a,b: cmp(b[1],a[1]) if a[1]!=b[1] else cmp(a[0],b[0]))
             template_values['access'] = access
-            template_values['me'] = get_user_data().orac_username
 
         self.response.out.write(template.render(HTML_PATH, template_values))
 

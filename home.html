@@ -5,17 +5,24 @@
 {% endif %}
 <div class="row">
     <div class="span6" style="height:100%;">
-        <div class="hero-unit">
-            <h1 class="page-header">statrac</h1>
-            <p>Welcome to statrac, a handy site that aggregates statistics from the <a href="http://orac.amt.edu.au/">Australian Informatics Olympiad training site</a>. Signing in and updating your statistics from orac will grant you access to a list of problems (accompanied by fancy graphs) and the ability to compare your statistics with other users.</p>
+        <div class="hero-unit main">
+            <h1>statrac</h1>
+            <p style="padding-top: 10px;">Welcome to statrac, a handy site that aggregates statistics from the <a href="http://orac.amt.edu.au/">Australian Informatics Olympiad training site</a>. Signing in and updating your statistics from orac will grant you access to a list of problems (accompanied by fancy graphs) and the ability to compare your statistics with other users.</p>
+            {% if not nickname %}
+            <a class="btn btn-primary" href="{{ login_url }}">Sign in &raquo;</a>
+            {% else %}
+            {% if not username %}
+            <a class="btn btn-primary" href="/update">Update statistics &raquo;</a>
+            {% endif %}
+            {% endif %}
         </div>
     </div>
     <div class="span6">
 
         <h2 class="page-header">Updates</h2>
         {% if updates %}
-        {% for timestamp, stuff in updates %}
-        <div class="well well-small"><b>{{ timestamp }}</b><br/>{{ stuff }}</div>
+        {% for timestamp, stuff, first, last in updates %}
+        <div class="roundlet{% if first %} first{% endif %}{% if last %} last{% endif %}"><b>{{ timestamp }}</b><br/>{{ stuff }}</div>
         {% endfor %}
         {% else %}
         No updates yet! They'll appear once someone makes progress on a problem and updates their statistics.

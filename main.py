@@ -503,7 +503,7 @@ class CompareHandler(webapp.RequestHandler):
             extra_values['them_total'] = '%d/%d (%.2f%%)' % (them_all_count, them_all_total, (them_all_count*100)/float(them_all_total))
             self.get(extra_values, True)
         else:
-            self.response.out.write(them_key)
+            self.response.out.write("Bad username, go away.")
 
 def main():
     application = webapp.WSGIApplication([

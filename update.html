@@ -14,6 +14,11 @@
     Another user has already uploaded their statistics under this username.
 </div>
 {% endif %}
+{% if status == 'badchars' %}
+<div class="alert alert-error">
+    The username you entered contains some invalid characters; it should only contain lowercase characters from a to z and digits from 0 to 9.
+</div>
+{% endif %}
 <p>At the heart of any good statistics site lies the statistics. To make it easier for you (since you don't have to save and upload a page from orac) and me (since I don't have to worry about people uploading incorrect/damaged pages), just punch in your orac username and password and your statistics will be fetched and updated automatically.</p>
 <p>Please note that your orac password is <b>not</b> being stored, and is only used to request your orac cookie, and then use that cookie to retrieve a list of your problems from the hub; both the password and cookie are discarded immediately after the request is made. Your orac username will be stored in order to identify your statistics to others.</p>
 

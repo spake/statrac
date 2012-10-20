@@ -230,6 +230,11 @@ class UpdateHandler(webapp.RequestHandler):
         username = self.request.get('username')
         password = self.request.get('password')
 
+        if not re.match(r'^[a-z0-9]+$', username):
+            self.response.set_status(303)
+            self.response.headers.add_header('Location', '?status=badchars')
+            return
+
         # make sure no-one is using this username already
         user = users.get_current_user()
 

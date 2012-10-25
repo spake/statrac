@@ -379,20 +379,24 @@ class ProblemHandler(webapp.RequestHandler):
                     access = True
                     break
 
-            solved, unsolved = 0, 0
+            solved, unsolved, unattempted = 0, 0, 0
             scores = dict()
             nice_solns = list()
             for soln in result:
-                if soln.result == 100:
-                    solved += 1
+                if not (not soln.solve_date and soln.result == 0):
+                    if soln.result == 100:
+                        solved += 1
+                    else:
+                        unsolved += 1
+                    if soln.result not in scores:
+                        scores[soln.result] = 0
+                    scores[soln.result] += 1
+                    nice_solns.append((get_user_data(soln.owner).orac_username, soln.result))
                 else:
-                    unsolved += 1
-                if soln.result not in scores:
-                    scores[soln.result] = 0
-                scores[soln.result] += 1
-                nice_solns.append((get_user_data(soln.owner).orac_username, soln.result))
+                    unattempted += 1
             template_values['solved'] = solved
             template_values['unsolved'] = unsolved
+            template_values['unattempted'] = unattempted
             template_values['scores'] = [(result, scores[result]) for result in sorted(scores, reverse=True)]
             template_values['solns'] = sorted(nice_solns, cmp=lambda a,b: cmp(b[1],a[1]) if a[1]!=b[1] else cmp(a[0],b[0]))
             template_values['access'] = access

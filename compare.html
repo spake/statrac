@@ -7,7 +7,7 @@
     </select>
     <input class="btn" type="submit" value="Compare" />
 </form>
-{% if table %}
+{% if us %}
 <table class="table table-bordered" id="statsTable">
     <thead>
         <tr>
@@ -29,6 +29,7 @@
         </tr>
     </tbody>
 </table>
+{% if table %}
 <table class="table table-striped table-bordered" id="scoreTable">
     <thead>
         <tr>
@@ -49,5 +50,9 @@
         {% endautoescape %}
     </tbody>
 </table>
+{% endif %}
+{% if not table %}
+Your progress is exactly the same as {{ them }}'s. Fancy that!
+{% endif %}
 <script type="text/javascript" src="/js/score.js"></script>
 {% endif %}

@@ -38,6 +38,7 @@
         </tr>
     </thead>
     <tbody>
+        {% autoescape off %}
         {% for val1, val2, val3 in table %}
         <tr>
             <td><a href="/problem/{{ val1.prob_id }}">{{ val1.name }}</a></td>
@@ -45,6 +46,7 @@
             <td class="score">{{ val3 }}</td>
         </tr>
         {% endfor %}
+        {% endautoescape %}
     </tbody>
 </table>
 <script type="text/javascript" src="/js/score.js"></script>

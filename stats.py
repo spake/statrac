@@ -55,7 +55,7 @@ def fetch_stats(username, password):
     conn = httplib.HTTPConnection('orac.amt.edu.au')
     conn.request('POST', '/cgi-bin/train/index.pl', urllib.urlencode(params))
     res = conn.getresponse()
-    if res.status == 302:
+    if res.status == 302 and '?error=1' not in res.getheader('Location'):
         # extract cookies
         cookie_header = res.getheader('set-cookie')
         cookie = '; '.join(re.findall('(aioc_.*?=.*?);', cookie_header))

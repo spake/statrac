@@ -8,14 +8,14 @@ def get_probs_stats(html_data):
     setNames = {}
     sets = {}
 
-    setPattern = re.compile('class="expfirst"><a name="(.*?)">(.*?)</a>')
+    setPattern = re.compile('class="alert-info"><a name="(.*?)">(.*?)</a>')
     setResults = setPattern.findall(html_data)
     for m in setResults:
         setNames[m[0]] = [m[1], True]
         sets[m[0]] = []
 
     # get all problems
-    probPattern = re.compile('problem.pl\?set=(.*?)\&problemid=(.*?)">(.*?)</a></td><td class="exp">(.*?)</td>')
+    probPattern = re.compile('problem.pl\?set=(.*?)\&problemid=(.*?)">(.*?)</a></td><td class=".*?">(.*?)</td>')
     probResults = probPattern.findall(html_data)
 
     # maps id to (name, result, solve_date)
@@ -28,7 +28,7 @@ def get_probs_stats(html_data):
         setid = m[0]
         probid = int(m[1])
         prob_name = m[2].replace('&#39;',"'")
-        status = m[3]
+        status = m[3].strip()
 
         #problems[probid] = [prob_name, status]
         sets[setid].append(probid)
